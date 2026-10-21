@@ -18,8 +18,12 @@ import org.example.Controller.EditorContext;
 import org.example.Controller.Ferramenta;
 import org.example.Controller.FerramentaDesenhar;
 import org.example.Controller.FerramentaExcluir;
+import org.example.Controller.FerramentaInserirForma;
 import org.example.Controller.FerramentaSelecionar;
+import org.example.Models.Circulo;
 import org.example.Models.FormaGeometrica;
+import org.example.Models.Hexagono;
+import org.example.Models.Quadrado;
 
 /**
  * Barra lateral esquerda com os controles do editor (figuras 4 a 10 do enunciado).
@@ -142,9 +146,9 @@ public class BarraLateralView extends VBox {
                 // Inserir forma também é uma ferramenta (arrasto no canvas),
                 // então participa do mesmo grupo de toggle
                 criarTitulo("FORMAS"),
-                criarBotaoFerramenta("Inserir Quadrado", null),
-                criarBotaoFerramenta("Inserir Círculo", null),
-                criarBotaoFerramenta("Inserir Hexágono", null));
+                criarBotaoFerramenta("Inserir Quadrado", () -> new FerramentaInserirForma(Quadrado::new)),
+                criarBotaoFerramenta("Inserir Círculo", () -> new FerramentaInserirForma(Circulo::new)),
+                criarBotaoFerramenta("Inserir Hexágono", () -> new FerramentaInserirForma(Hexagono::new)));
     }
 
     private void construirSecaoCamadas() {

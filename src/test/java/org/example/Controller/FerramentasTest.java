@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.example.Models.Circulo;
 import org.example.Models.FormaGeometrica;
+import org.example.Models.Hexagono;
 import org.example.Models.Poligono;
 import org.example.Models.Ponto;
 import org.example.Models.Quadrado;
@@ -209,6 +211,49 @@ class FerramentasTest {
         contexto.aoPressionarMouse(pressionar(500, 500));
         contexto.aoSoltarMouse(soltar(500, 500));
         assertTrue(contexto.getSelecionados().isEmpty());
+    }
+
+    // ---------------- Inserir forma ----------------
+
+    @Test
+    void arrastarInsereFormaComCentroERaio() {
+        contexto.setFerramentaAtual(new FerramentaInserirForma(Circulo::new));
+        contexto.aoPressionarMouse(pressionar(100, 100));
+        contexto.aoArrastarMouse(arrastar(130, 100));
+        contexto.aoArrastarMouse(arrastar(100, 150)); // raio final = 50
+        assertNotNull(contexto.getFormaEmAndamento(), "durante o arrasto aparece uma prévia");
+        contexto.aoSoltarMouse(soltar(100, 150));
+
+        assertEquals(1, contexto.getFormas().size());
+        Circulo c = (Circulo) contexto.getFormas().get(0);
+        assertEquals(50, c.getRaio(), DELTA);
+        assertEquals(100, c.getCentro().getX(), DELTA);
+        assertNull(contexto.getFormaEmAndamento());
+    }
+
+    @Test
+    void mesmaFerramentaCriaTiposDiferentesConformeAFabrica() {
+        contexto.setFerramentaAtual(new FerramentaInserirForma(Hexagono::new));
+        contexto.aoPressionarMouse(pressionar(100, 100));
+        contexto.aoArrastarMouse(arrastar(150, 100));
+        contexto.aoSoltarMouse(soltar(150, 100));
+
+        contexto.setFerramentaAtual(new FerramentaInserirForma(Quadrado::new));
+        contexto.aoPressionarMouse(pressionar(300, 100));
+        contexto.aoArrastarMouse(arrastar(350, 100));
+        contexto.aoSoltarMouse(soltar(350, 100));
+
+        assertInstanceOf(Hexagono.class, contexto.getFormas().get(0));
+        assertInstanceOf(Quadrado.class, contexto.getFormas().get(1));
+    }
+
+    @Test
+    void cliqueSemArrastarNaoInsereForma() {
+        contexto.setFerramentaAtual(new FerramentaInserirForma(Quadrado::new));
+        contexto.aoPressionarMouse(pressionar(100, 100));
+        contexto.aoArrastarMouse(arrastar(101, 101));
+        contexto.aoSoltarMouse(soltar(101, 101));
+        assertTrue(contexto.getFormas().isEmpty());
     }
 
     // ---------------- Excluir ----------------
