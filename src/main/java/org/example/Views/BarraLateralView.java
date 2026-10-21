@@ -17,9 +17,12 @@ import javafx.scene.paint.Color;
 import org.example.Controller.EditorContext;
 import org.example.Controller.Ferramenta;
 import org.example.Controller.FerramentaDesenhar;
+import org.example.Controller.FerramentaEditarVertice;
 import org.example.Controller.FerramentaExcluir;
 import org.example.Controller.FerramentaInserirForma;
 import org.example.Controller.FerramentaSelecionar;
+import org.example.Controller.FerramentaTransformar;
+import org.example.Controller.ModoFerramenta;
 import org.example.Models.Circulo;
 import org.example.Models.FormaGeometrica;
 import org.example.Models.Hexagono;
@@ -135,12 +138,12 @@ public class BarraLateralView extends VBox {
                 criarTitulo("FERRAMENTAS"),
                 criarBotaoFerramenta("Linha Livre", FerramentaDesenhar::new),
                 botaoSelecionar,
-                // Transformações e edição de vértice entram na etapa 5
-                criarBotaoFerramenta("Escalar", null),
-                criarBotaoFerramenta("Rotacionar", null),
-                criarBotaoFerramenta("Cisalhar", null),
+                // As três transformações são a mesma classe com modos diferentes
+                criarBotaoFerramenta("Escalar", () -> new FerramentaTransformar(ModoFerramenta.ESCALAR)),
+                criarBotaoFerramenta("Rotacionar", () -> new FerramentaTransformar(ModoFerramenta.ROTACIONAR)),
+                criarBotaoFerramenta("Cisalhar", () -> new FerramentaTransformar(ModoFerramenta.CISALHAR)),
                 criarBotaoFerramenta("Excluir", FerramentaExcluir::new),
-                criarBotaoFerramenta("Editar Vértice", null),
+                criarBotaoFerramenta("Editar Vértice", FerramentaEditarVertice::new),
                 botaoExcluirSelecionados,
 
                 // Inserir forma também é uma ferramenta (arrasto no canvas),

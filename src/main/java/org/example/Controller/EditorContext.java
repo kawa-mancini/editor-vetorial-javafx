@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.input.MouseEvent;
 import org.example.Models.FormaGeometrica;
+import org.example.Models.Ponto;
 
 /**
  * Contexto do padrão State e "estado" do editor: as formas desenhadas,
@@ -188,6 +189,24 @@ public class EditorContext {
 
     public boolean isSelecionado(FormaGeometrica forma) {
         return selecionados.contains(forma);
+    }
+
+    /**
+     * Centro comum das formas selecionadas: média dos centroides de cada uma.
+     * É o ponto em torno do qual a seleção é escalada, rotacionada e cisalhada.
+     */
+    public Ponto getCentroideSelecao() {
+        if (selecionados.isEmpty()) {
+            throw new IllegalStateException("Não há formas selecionadas.");
+        }
+        double somaX = 0;
+        double somaY = 0;
+        for (FormaGeometrica forma : selecionados) {
+            Ponto c = forma.getCentroide();
+            somaX += c.getX();
+            somaY += c.getY();
+        }
+        return new Ponto(somaX / selecionados.size(), somaY / selecionados.size());
     }
 
     public void excluirSelecionados() {
