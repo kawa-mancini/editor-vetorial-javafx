@@ -2,9 +2,11 @@ package org.example.Views;
 
 import java.util.List;
 import javafx.application.Application;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Alert;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
@@ -13,10 +15,7 @@ import javafx.stage.Stage;
 import org.example.Controller.EditorContext;
 import org.example.Models.Circulo;
 import org.example.Models.FormaGeometrica;
-import org.example.Models.Hexagono;
-import org.example.Models.Poligono;
 import org.example.Models.Ponto;
-import org.example.Models.Quadrado;
 
 /**
  * Janela principal do editor: barra lateral à esquerda, canvas no centro
@@ -32,6 +31,9 @@ public class ContainerApp extends Application {
     private static final Color COR_VERTICE = Color.RED;
     private static final double ESPESSURA_MINIMA_SELECAO = 2;
     private static final double RAIO_VERTICE = 3;
+
+    private static final Color COR_GRADE = Color.web("#E6E6E6");
+    private static final Color COR_CAIXA_SELECAO = Color.web("#1E78D7");
 
     private Canvas areaDeDesenho;
     private EditorContext contexto;
@@ -65,11 +67,15 @@ public class ContainerApp extends Application {
         raiz.setCenter(containerCanvas);
         raiz.setBottom(painelStatus);
 
-        // A View ensina o contexto a pedir redesenho e atualização do status
+        // A View ensina o contexto a redesenhar, atualizar o status e avisar o usuário
         contexto.setAcaoRedesenhar(this::redesenharCanvas);
-        contexto.setAcaoAtualizarStats(painelStatus::atualizar);
+        contexto.setAcaoAtualizarStats(() -> {
+            painelStatus.atualizar();
+            barraLateral.atualizarCoresInterface();
+        });
+        contexto.setAcaoMostrarAviso(this::mostrarAviso);
 
-        criarFormasDeExemplo();
+        inicializarEventos();
 
         Scene cena = new Scene(raiz, LARGURA_INICIAL, ALTURA_INICIAL);
         palco.setTitle("Editor de Desenho Vetorial");
@@ -81,39 +87,69 @@ public class ContainerApp extends Application {
     }
 
     /**
-     * TEMPORÁRIO (etapa 3): formas fixas só para testar o desenho.
-     * Será removido na etapa 4, quando as formas forem criadas com o mouse.
+     * Liga os eventos do mouse no canvas ao contexto.
+     * Repare que não há nenhum if/switch por ferramenta: o contexto repassa
+     * o evento para a ferramenta ativa (padrão State).
      */
-    private void criarFormasDeExemplo() {
-        contexto.adicionarForma(new Circulo(new Ponto(220, 200), 90));
-        contexto.adicionarForma(new Hexagono(new Ponto(420, 390), 100));
-        contexto.adicionarForma(new Quadrado(new Ponto(760, 210), 110));
+    public void inicializarEventos() {
+        areaDeDesenho.setOnMousePressed(contexto::aoPressionarMouse);
+        areaDeDesenho.setOnMouseDragged(contexto::aoArrastarMouse);
+        areaDeDesenho.setOnMouseReleased(contexto::aoSoltarMouse);
+        areaDeDesenho.setOnMouseClicked(contexto::aoClicar);
+    }
 
-        Poligono triangulo = new Poligono(List.of(new Ponto(650, 420), new Ponto(820, 600), new Ponto(560, 640)));
-        triangulo.setCorPreenchimentoHex("#8066CC");
-        triangulo.setCorBordaHex("#3A2A6A");
-        triangulo.setEspessuraBorda(3);
-        contexto.adicionarForma(triangulo);
-
-        // Um quadrado selecionado, para conferir o destaque verde/vermelho
-        Quadrado selecionado = new Quadrado(new Ponto(230, 520), 80);
-        selecionado.setCorPreenchimentoHex("#CCCC33");
-        contexto.adicionarForma(selecionado);
-        contexto.selecionar(selecionado);
+    private void mostrarAviso(String mensagem) {
+        Alert alerta = new Alert(Alert.AlertType.WARNING);
+        alerta.setTitle("Aviso");
+        alerta.setHeaderText(null);
+        alerta.setContentText(mensagem);
+        alerta.showAndWait();
     }
 
     // ------------------------------------------------------------------
     // Desenho
     // ------------------------------------------------------------------
 
-    /** Apaga o canvas e desenha todas as formas, da camada de trás para a da frente. */
+    /** Apaga o canvas e desenha tudo de novo, da camada de trás para a da frente. */
     private void redesenharCanvas() {
         GraphicsContext gc = areaDeDesenho.getGraphicsContext2D();
         gc.setFill(Color.WHITE);
         gc.fillRect(0, 0, areaDeDesenho.getWidth(), areaDeDesenho.getHeight());
 
+        if (contexto.isGridSnappingHabilitado()) {
+            desenharGrade(gc);
+        }
+
         for (FormaGeometrica forma : contexto.getFormas()) {
             desenharForma(forma, contexto.isSelecionado(forma));
+        }
+
+        // Forma ainda sendo criada (polígono pela metade, quadrado sendo arrastado...)
+        FormaGeometrica emAndamento = contexto.getFormaEmAndamento();
+        if (emAndamento != null) {
+            desenharForma(emAndamento, false);
+            desenharVertices(gc, emAndamento);
+        }
+
+        Rectangle2D caixa = contexto.getCaixaSelecao();
+        if (caixa != null) {
+            gc.setStroke(COR_CAIXA_SELECAO);
+            gc.setLineWidth(1);
+            gc.setLineDashes(6, 4);
+            gc.strokeRect(caixa.getMinX(), caixa.getMinY(), caixa.getWidth(), caixa.getHeight());
+            gc.setLineDashes(null);
+        }
+    }
+
+    private void desenharGrade(GraphicsContext gc) {
+        double passo = EditorContext.TAMANHO_GRADE;
+        gc.setStroke(COR_GRADE);
+        gc.setLineWidth(1);
+        for (double x = 0; x <= areaDeDesenho.getWidth(); x += passo) {
+            gc.strokeLine(x, 0, x, areaDeDesenho.getHeight());
+        }
+        for (double y = 0; y <= areaDeDesenho.getHeight(); y += passo) {
+            gc.strokeLine(0, y, areaDeDesenho.getWidth(), y);
         }
     }
 
@@ -143,8 +179,13 @@ public class ContainerApp extends Application {
                 xs[i] = pontos.get(i).getX();
                 ys[i] = pontos.get(i).getY();
             }
-            gc.fillPolygon(xs, ys, pontos.size());
-            gc.strokePolygon(xs, ys, pontos.size());
+            if (pontos.size() < 3) {
+                // Polígono ainda sendo desenhado: só a linha entre os pontos
+                gc.strokePolyline(xs, ys, pontos.size());
+            } else {
+                gc.fillPolygon(xs, ys, pontos.size());
+                gc.strokePolygon(xs, ys, pontos.size());
+            }
         }
 
         if (selecionada) {
