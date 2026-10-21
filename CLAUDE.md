@@ -2,7 +2,7 @@
 
 Trabalho acadêmico da UniRV (Engenharia de Software, Prof. Sergio Souza Novak).
 O enunciado completo está em `docs/enunciado.pdf` e o diagrama de classes em
-`docs/diagrama_classes.pdf`. Em caso de dúvida, o enunciado prevalece sobre este arquivo.
+`docs/diagrama.pdf`. Em caso de dúvida, o enunciado prevalece sobre este arquivo.
 
 ## Como trabalhar neste projeto
 
@@ -13,7 +13,8 @@ O enunciado completo está em `docs/enunciado.pdf` e o diagrama de classes em
 - Siga os nomes de classes, métodos e pacotes do diagrama. Não renomeie.
 - Atributos sempre `private` ou `protected`, com getters/setters.
 - Não adicione dependências além de JavaFX e uma biblioteca de JSON (Gson ou Jackson)
-  sem perguntar.
+  sem perguntar. JUnit 5 (scope test) já foi aprovado.
+- Testes ficam em `src/test/java` e rodam com `mvn test`; mantenha-os passando.
 
 ## Requisitos técnicos
 
