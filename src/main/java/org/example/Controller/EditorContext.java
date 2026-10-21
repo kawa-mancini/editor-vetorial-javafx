@@ -39,6 +39,9 @@ public class EditorContext {
     // Retângulo tracejado da seleção por caixa (null quando não há)
     private Rectangle2D caixaSelecao;
 
+    // Posição do mouse sobre o canvas, mostrada na barra de status (null fora do canvas)
+    private Ponto posicaoMouse;
+
     // O que fazer quando o desenho ou a barra de status precisam ser atualizados,
     // ou quando é preciso avisar o usuário. Quem define é a View; assim o Controller
     // não precisa conhecer as classes da View (baixo acoplamento, seção 3.2).
@@ -58,6 +61,7 @@ public class EditorContext {
         this.corBordaAtual = "#000000";
         this.espessuraBordaAtual = 1.0;
         this.caixaSelecao = null;
+        this.posicaoMouse = null;
         this.acaoRedesenhar = () -> { };
         this.acaoAtualizarStats = () -> { };
         this.acaoMostrarAviso = mensagem -> { };
@@ -68,19 +72,48 @@ public class EditorContext {
     // ------------------------------------------------------------------
 
     public void aoPressionarMouse(MouseEvent evento) {
+        registrarPosicaoMouse(evento);
         ferramentaAtual.aoPressionarMouse(evento, this);
     }
 
     public void aoArrastarMouse(MouseEvent evento) {
+        registrarPosicaoMouse(evento);
         ferramentaAtual.aoArrastarMouse(evento, this);
+        requestStatsUpdate(); // coordenadas do mouse mudam a cada arrasto
     }
 
     public void aoSoltarMouse(MouseEvent evento) {
+        registrarPosicaoMouse(evento);
         ferramentaAtual.aoSoltarMouse(evento, this);
     }
 
     public void aoClicar(MouseEvent evento) {
         ferramentaAtual.aoClicar(evento, this);
+    }
+
+    // ------------------------------------------------------------------
+    // Posição do mouse (para a barra de status; não depende da ferramenta)
+    // ------------------------------------------------------------------
+
+    /** Mouse se movendo sem botão pressionado. */
+    public void aoMoverMouse(MouseEvent evento) {
+        registrarPosicaoMouse(evento);
+        requestStatsUpdate();
+    }
+
+    /** Mouse saiu do canvas: a barra de status deixa de mostrar coordenadas. */
+    public void aoSairDoCanvas() {
+        posicaoMouse = null;
+        requestStatsUpdate();
+    }
+
+    private void registrarPosicaoMouse(MouseEvent evento) {
+        posicaoMouse = new Ponto(evento.getX(), evento.getY());
+    }
+
+    /** Posição do mouse no canvas, ou null se ele estiver fora. */
+    public Ponto getPosicaoMouse() {
+        return posicaoMouse;
     }
 
     public Ferramenta getFerramentaAtual() {

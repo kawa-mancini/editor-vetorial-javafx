@@ -128,6 +128,9 @@ public class ContainerApp extends Application {
         areaDeDesenho.setOnMouseDragged(contexto::aoArrastarMouse);
         areaDeDesenho.setOnMouseReleased(contexto::aoSoltarMouse);
         areaDeDesenho.setOnMouseClicked(contexto::aoClicar);
+        // Só para as coordenadas da barra de status
+        areaDeDesenho.setOnMouseMoved(contexto::aoMoverMouse);
+        areaDeDesenho.setOnMouseExited(evento -> contexto.aoSairDoCanvas());
     }
 
     /**

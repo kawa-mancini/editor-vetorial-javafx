@@ -64,6 +64,21 @@ class FerramentasTest {
         assertNull(contexto.getFormaEmAndamento());
     }
 
+    @Test
+    void posicaoDoMouseParaABarraDeStatus() {
+        assertNull(contexto.getPosicaoMouse());
+        contexto.aoMoverMouse(evento(javafx.scene.input.MouseEvent.MOUSE_MOVED, 120, 45,
+                javafx.scene.input.MouseButton.NONE, 0, false));
+        assertEquals(120, contexto.getPosicaoMouse().getX(), DELTA);
+        assertEquals(45, contexto.getPosicaoMouse().getY(), DELTA);
+
+        contexto.aoArrastarMouse(arrastar(200, 90));
+        assertEquals(200, contexto.getPosicaoMouse().getX(), DELTA);
+
+        contexto.aoSairDoCanvas();
+        assertNull(contexto.getPosicaoMouse());
+    }
+
     // ---------------- Linha Livre ----------------
 
     @Test
