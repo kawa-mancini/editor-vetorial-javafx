@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Diagrama de Classes Atualizado - Editor Vetorial</title>
+<!-- Fonte do diagrama em PDF (docs/diagrama_atualizado.pdf).
+     Para regenerar: abrir no Edge/Chrome e imprimir em PDF (A4 paisagem). -->
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #222; margin: 0; background: #fff; }
+  section { page-break-after: always; break-after: page; height: 186mm; overflow: hidden; display: flex; flex-direction: column; }
+  section:last-of-type { page-break-after: auto; break-after: auto; }
+  h1 { font-size: 15pt; margin: 0 0 2mm 0; }
+  h2 { font-size: 12pt; margin: 0 0 1mm 0; color: #333; }
+  p.sub { font-size: 8.5pt; color: #555; margin: 0 0 2mm 0; }
+  .diagrama { flex: 1; min-height: 0; }
+  .diagrama pre { width: 100%; height: 100%; margin: 0; }
+  /* O SVG ocupa toda a área e o viewBox mantém a proporção (amplia até caber) */
+  .diagrama svg { width: 100% !important; height: 100% !important; max-width: none !important; }
+  .legenda { font-size: 8pt; color: #444; margin-top: 1mm; }
+  .legenda span { display: inline-block; width: 10px; height: 10px; border: 1px solid #999; vertical-align: middle; margin: 0 3px 0 10px; }
+  table { border-collapse: collapse; font-size: 8.5pt; width: 100%; }
+  th, td { border: 1px solid #bbb; padding: 3px 6px; text-align: left; vertical-align: top; }
+  th { background: #eee; }
+  code { font-family: Consolas, monospace; font-size: 8pt; }
+</style>
+</head>
+<body>
+
+<section>
+  <h1>Editor de Desenho Vetorial — Diagrama de Classes (atualizado)</h1>
+  <h2>Pacote org.example.Models</h2>
+  <p class="sub">Formas geométricas e regras de negócio. Prototype: <code>clonar()</code> faz cópia profunda (cada Ponto é clonado).</p>
+  <div class="diagrama"><pre class="mermaid">
+classDiagram
+  direction LR
+  class FormaGeometrica {
+    &lt;&lt;interface&gt;&gt;
+    +adicionarPonto(Ponto p)
+    +getPontos() List~Ponto~
+    +getQuantidadePontos() int
+    +getCorPreenchimentoHex() String
+    +setCorPreenchimentoHex(String hex)
+    +getCorBordaHex() String
+    +setCorBordaHex(String hex)
+    +getEspessuraBorda() double
+    +setEspessuraBorda(double espessura)
+    +getGroupId() String
+    +setGroupId(String groupId)
+    +calcularArea() double
+    +calcularPerimetro() double
+    +getCentroide() Ponto
+    +contemPonto(double px, double py) boolean
+    +transladar(double dx, double dy)
+    +escalar(double fator)
+    +rotacionar(double anguloRadianos)
+    +cisalhar(double shx, double shy)
+    +clonar() FormaGeometrica
+  }
+  class FormaBase {
+    &lt;&lt;abstract&gt;&gt;
+    #pontos: List~Ponto~
+    #corPreenchimentoHex: String
+    #corBordaHex: String
+    #espessuraBorda: double
+    #groupId: String
+    +«implementações base da interface»
+    #validarFatorEscala(double fator)
+    #gerarVerticesRegulares(Ponto centro, double raio, int lados, double anguloInicial)
+    #copiarAtributosPara(FormaBase destino)
+  }
+  class Ponto {
+    -x: double
+    -y: double
+    +Ponto(double x, double y)
+    +getX() / setX(double)
+    +getY() / setY(double)
+    +mover(double dx, double dy)
+    +distancia(Ponto outro) double
+    +clonar() Ponto
+  }
+  class Poligono {
+    +MINIMO_PONTOS: int = 3$
+    +Poligono()
+    +Poligono(List~Ponto~ pontos)
+    +validar()
+    +clonar() FormaGeometrica
+  }
+  class Circulo {
+    -raio: double
+    +Circulo(Ponto centro, double raio)
+    +getCentro() Ponto
+    +getRaio() double
+    +setRaio(double raio)
+    +clonar() FormaGeometrica
+  }
+  class Quadrado {
+    +Quadrado(Ponto centro, double raio)
+    +aPartirDosVertices(List~Ponto~ vertices)$ Quadrado
+    +clonar() FormaGeometrica
+  }
+  class Hexagono {
+    +Hexagono(Ponto centro, double raio)
+    +aPartirDosVertices(List~Ponto~ vertices)$ Hexagono
+    +clonar() FormaGeometrica
+  }
+  FormaBase ..|> FormaGeometrica
+  FormaBase "1" *-- "*" Ponto : pontos
+  Poligono --|> FormaBase
+  Circulo --|> FormaBase
+  Quadrado --|> FormaBase
+  Hexagono --|> FormaBase
+  </pre></div>
+</section>
+
+<section>
+  <h2>Pacote org.example.Controller — contexto, histórico e persistência</h2>
+  <p class="sub">State: o EditorContext repassa os eventos do mouse para <code>ferramentaAtual</code>. Memento: HistoricoController guarda cópias profundas da lista de formas. Composite: <code>selecionar()</code> inclui todas as formas com o mesmo groupId.</p>
+  <div class="diagrama"><pre class="mermaid">
+classDiagram
+  direction LR
+  class EditorContext {
+    +TAMANHO_GRADE: double = 20$
+    -formas: List~FormaGeometrica~
+    -selecionados: List~FormaGeometrica~
+    -formaEmAndamento: FormaGeometrica
+    -ferramentaAtual: Ferramenta
+    -gridSnappingHabilitado: boolean
+    -historico: HistoricoController
+    -alteracoesNaoSalvas: boolean
+    -corPreenchimentoAtual: String
+    -corBordaAtual: String
+    -espessuraBordaAtual: double
+    -caixaSelecao: Rectangle2D
+    -posicaoMouse: Ponto
+    -acaoRedesenhar: Runnable
+    -acaoAtualizarStats: Runnable
+    -acaoMostrarAviso: Consumer~String~
+    +requestRedraw()
+    +requestStatsUpdate()
+    +agruparSelecionados()
+    +desagruparSelecionados()
+    +trazerParaFrente()
+    +enviarParaTras()
+    +aplicarSnap(double valor) double
+    +aoPressionarMouse(MouseEvent)
+    +aoArrastarMouse(MouseEvent)
+    +aoSoltarMouse(MouseEvent)
+    +aoClicar(MouseEvent)
+    +aoMoverMouse(MouseEvent)
+    +aoSairDoCanvas()
+    +registrarEstado()
+    +desfazer()
+    +refazer()
+    +temAlteracoesNaoSalvas() boolean
+    +marcarComoSalvo()
+    +adicionarForma(FormaGeometrica)
+    +removerForma(FormaGeometrica)
+    +setFormas(List~FormaGeometrica~)
+    +encontrarFormaEm(double x, double y) FormaGeometrica
+    +aplicarEstiloAtual(FormaGeometrica)
+    +selecionar(FormaGeometrica)
+    +desselecionar(FormaGeometrica)
+    +limparSelecao()
+    +isSelecionado(FormaGeometrica) boolean
+    +getCentroideSelecao() Ponto
+    +excluirSelecionados()
+    +getMembrosDoGrupo(FormaGeometrica) List~FormaGeometrica~
+    +mostrarAviso(String mensagem)
+    +setAcaoRedesenhar(Runnable) / setAcaoAtualizarStats(Runnable) / setAcaoMostrarAviso(Consumer)
+    +«getters e setters dos demais atributos»
+  }
+  class HistoricoController {
+    -LIMITE_ESTADOS: int = 100$
+    -undoStack: Stack~List~FormaGeometrica~~
+    -redoStack: Stack~List~FormaGeometrica~~
+    +registrarEstado(List~FormaGeometrica~ lista)
+    +desfazer(List~FormaGeometrica~ atual) List~FormaGeometrica~
+    +refazer(List~FormaGeometrica~ atual) List~FormaGeometrica~
+    +podeDesfazer() boolean
+    +podeRefazer() boolean
+    +limpar()
+    -copiaProfunda(List~FormaGeometrica~) List~FormaGeometrica~
+  }
+  class Ferramenta {
+    &lt;&lt;interface&gt;&gt;
+    +aoPressionarMouse(MouseEvent, EditorContext)
+    +aoArrastarMouse(MouseEvent, EditorContext)
+    +aoSoltarMouse(MouseEvent, EditorContext)
+    +aoClicar(MouseEvent, EditorContext)
+  }
+  class PersistenciaJson {
+    -VERSAO_FORMATO: int = 1$
+    -GSON: Gson$
+    +salvar(Path arquivo, EditorContext contexto, double largura, double altura)
+    +carregar(Path arquivo, EditorContext contexto)
+    -formaParaJson(FormaGeometrica) JsonObject
+    -jsonParaForma(JsonElement) FormaGeometrica
+  }
+  class ArquivoInvalidoException {
+    &lt;&lt;classe interna de PersistenciaJson&gt;&gt;
+    +ArquivoInvalidoException(String mensagem)
+  }
+  class FormaGeometrica {
+    &lt;&lt;interface&gt;&gt;
+  }
+  EditorContext "1" o-- "1" HistoricoController : historico
+  EditorContext "1" o-- "1" Ferramenta : ferramentaAtual
+  EditorContext --> "*" FormaGeometrica : formas / selecionados
+  HistoricoController ..> FormaGeometrica : clonar()
+  PersistenciaJson ..> EditorContext : usa
+  PersistenciaJson ..> ArquivoInvalidoException : lança
+  style PersistenciaJson fill:#FFF3CD,stroke:#B8860B
+  style ArquivoInvalidoException fill:#FFF3CD,stroke:#B8860B
+  </pre></div>
+  <div class="legenda"><span style="background:#FFF3CD;border-color:#B8860B"></span>classe extra (não existia no diagrama original)</div>
+</section>
+
+<section>
+  <h2>Pacote org.example.Controller — ferramentas (padrão State)</h2>
+  <p class="sub">Cada ferramenta é um estado. FerramentaTransformar usa o enum ModoFerramenta, em que cada constante implementa a própria transformação (sem switch).</p>
+  <div class="diagrama"><pre class="mermaid">
+classDiagram
+  direction TB
+  class Ferramenta {
+    &lt;&lt;interface&gt;&gt;
+    +aoPressionarMouse(MouseEvent, EditorContext)
+    +aoArrastarMouse(MouseEvent, EditorContext)
+    +aoSoltarMouse(MouseEvent, EditorContext)
+    +aoClicar(MouseEvent, EditorContext)
+  }
+  class FerramentaDesenhar {
+    -DISTANCIA_PARA_FECHAR: double = 10$
+    -finalizarPoligono(EditorContext)
+  }
+  class FerramentaSelecionar {
+    -arrastandoCaixa: boolean
+    -selecaoStartX: double
+    -selecaoStartY: double
+    -movendoSelecao: boolean
+    -ultimoX: double
+    -ultimoY: double
+    -estadoRegistrado: boolean
+  }
+  class FerramentaTransformar {
+    -modo: ModoFerramenta
+    -centroTransformacao: Ponto
+    -ultimoMouse: Ponto
+    -estadoRegistrado: boolean
+    +FerramentaTransformar(ModoFerramenta modo)
+    +getModo() ModoFerramenta
+  }
+  class FerramentaInserirForma {
+    -centroInsercao: Ponto
+    -fabrica: BiFunction‹Ponto, Double, FormaGeometrica›
+    +FerramentaInserirForma(BiFunction fabrica)
+  }
+  class FerramentaEditarVertice {
+    -verticeSelecionado: Ponto
+    -estadoRegistrado: boolean
+  }
+  class FerramentaExcluir {
+  }
+  class ModoFerramenta {
+    &lt;&lt;enumeration&gt;&gt;
+    ESCALAR
+    ROTACIONAR
+    CISALHAR
+    +transformar(FormaGeometrica forma, Ponto centro, Ponto anterior, Ponto atual)*
+  }
+  FerramentaDesenhar ..|> Ferramenta
+  FerramentaSelecionar ..|> Ferramenta
+  FerramentaTransformar ..|> Ferramenta
+  FerramentaInserirForma ..|> Ferramenta
+  FerramentaEditarVertice ..|> Ferramenta
+  FerramentaExcluir ..|> Ferramenta
+  FerramentaTransformar --> "1" ModoFerramenta : modo
+  style FerramentaExcluir fill:#FFF3CD,stroke:#B8860B
+  </pre></div>
+  <div class="legenda"><span style="background:#FFF3CD;border-color:#B8860B"></span>classe extra (não existia no diagrama original)</div>
+</section>
+
+<section>
+  <h2>Pacote org.example.Views</h2>
+  <p class="sub">A View entrega callbacks ao EditorContext (requestRedraw, requestStatsUpdate, mostrarAviso), assim o Controller não depende das classes da View.</p>
+  <div class="diagrama"><pre class="mermaid">
+classDiagram
+  direction LR
+  class ContainerApp {
+    -areaDeDesenho: Canvas
+    -contexto: EditorContext
+    -barraLateral: BarraLateralView
+    -painelStatus: PainelStatusView
+    -palco: Stage
+    -arquivoAtual: File
+    -persistencia: PersistenciaJson
+    +start(Stage palco)
+    +inicializarEventos()
+    -redesenharCanvas()
+    -desenharForma(FormaGeometrica, boolean)
+    -salvarArquivo() boolean
+    -carregarArquivo()
+    -confirmarDescarteDasAlteracoes() boolean
+    -configurarAtalhos(Scene)
+    -atualizarTitulo()
+    -mostrarAviso(String) / mostrarErro(String, String)
+    -desenharGrade(GraphicsContext)
+    -desenharVertices(GraphicsContext, FormaGeometrica)
+    -desenharContornoDosGrupos(GraphicsContext)
+    +main(String[] args)$
+  }
+  class BarraLateralView {
+    -contexto: EditorContext
+    -grupoFerramentas: ToggleGroup
+    -seletorCorPreenchimento: ColorPicker
+    -seletorCorBorda: ColorPicker
+    -sliderEspessura: Slider
+    -checkSnapping: CheckBox
+    -atualizandoInterface: boolean
+    -acaoSalvar: Runnable
+    -acaoCarregar: Runnable
+    +atualizarCoresInterface()
+    +atualizarSnapping()
+    +setAcaoSalvar(Runnable) / setAcaoCarregar(Runnable)
+    -construirSecaoEstilos()
+    -construirSecaoFerramentas()
+    -construirSecaoCamadas()
+    -construirSecaoSistema()
+  }
+  class PainelStatusView {
+    -contexto: EditorContext
+    -rotuloCoordenadas: Label
+    -rotuloTotalFormas: Label
+    -rotuloSelecao: Label
+    +atualizar()
+  }
+  class Application {
+    &lt;&lt;JavaFX&gt;&gt;
+  }
+  class VBox {
+    &lt;&lt;JavaFX&gt;&gt;
+  }
+  class HBox {
+    &lt;&lt;JavaFX&gt;&gt;
+  }
+  class EditorContext {
+    &lt;&lt;Controller&gt;&gt;
+  }
+  class PersistenciaJson {
+    &lt;&lt;Controller&gt;&gt;
+  }
+  ContainerApp --|> Application
+  BarraLateralView --|> VBox
+  PainelStatusView --|> HBox
+  ContainerApp *-- BarraLateralView
+  ContainerApp *-- PainelStatusView
+  ContainerApp ..> EditorContext : usa
+  BarraLateralView ..> EditorContext : usa
+  PainelStatusView ..> EditorContext : usa
+  ContainerApp ..> PersistenciaJson : usa
+  style PersistenciaJson fill:#FFF3CD,stroke:#B8860B
+  </pre></div>
+</section>
+
+<section>
+  <h2>Alterações em relação ao diagrama original (docs/diagrama.pdf)</h2>
+  <p class="sub">Todos os nomes do diagrama original foram mantidos. Abaixo estão apenas os acréscimos e o motivo de cada um.</p>
+  <table>
+    <tr><th style="width:22%">Classe</th><th style="width:38%">Acréscimo</th><th>Motivo</th></tr>
+    <tr><td><b>PersistenciaJson</b> (nova)</td><td><code>salvar</code>, <code>carregar</code>, exceção interna <code>ArquivoInvalidoException</code></td><td>Separa a leitura/escrita do JSON (Gson) da interface gráfica; permite testar o tratamento de arquivos corrompidos.</td></tr>
+    <tr><td><b>FerramentaExcluir</b> (nova)</td><td>Implementa <code>Ferramenta</code></td><td>O enunciado tem o botão "Excluir" como ferramenta, mas o diagrama não tinha uma classe para ela.</td></tr>
+    <tr><td>ModoFerramenta</td><td>Método abstrato <code>transformar(...)</code> em cada constante</td><td>Cada modo implementa a própria transformação, evitando <code>switch</code> na FerramentaTransformar.</td></tr>
+    <tr><td>EditorContext</td><td>Repasse de eventos (<code>aoPressionarMouse</code>... <code>aoMoverMouse</code>, <code>aoSairDoCanvas</code>); <code>historico</code>; estilo atual; <code>caixaSelecao</code>; <code>posicaoMouse</code>; <code>alteracoesNaoSalvas</code>; callbacks para a View; métodos de seleção, grupos e camadas</td><td>Contexto do State; desfazer/refazer; aviso de alterações não salvas; barra de status; baixo acoplamento com a View.</td></tr>
+    <tr><td>HistoricoController</td><td><code>podeDesfazer</code>, <code>podeRefazer</code>, <code>limpar</code></td><td>Saber se há o que desfazer; limpar o histórico ao carregar um arquivo.</td></tr>
+    <tr><td>FerramentaSelecionar, FerramentaTransformar, FerramentaEditarVertice</td><td>Atributos de controle do arrasto (<code>ultimoX/Y</code>, <code>centroTransformacao</code>, <code>estadoRegistrado</code>...)</td><td>Mover a seleção; transformar em torno do centro comum; registrar o histórico uma vez por arrasto.</td></tr>
+    <tr><td>FerramentaInserirForma</td><td>Atributo <code>fabrica</code> e construtor que a recebe</td><td>Uma única classe insere quadrado, círculo ou hexágono (<code>Quadrado::new</code>...).</td></tr>
+    <tr><td>Poligono</td><td>Construtor <code>Poligono(List&lt;Ponto&gt;)</code>, <code>validar()</code>, <code>MINIMO_PONTOS</code></td><td>Validação da regra "mínimo de 3 pontos".</td></tr>
+    <tr><td>Circulo</td><td>Atributo <code>raio</code>, <code>getCentro</code>, <code>getRaio</code>, <code>setRaio</code></td><td>O círculo guarda o centro em <code>pontos</code> e o raio separado.</td></tr>
+    <tr><td>Quadrado, Hexagono</td><td><code>aPartirDosVertices(List&lt;Ponto&gt;)</code></td><td>Recriar formas transformadas ao carregar um arquivo.</td></tr>
+    <tr><td>FormaBase</td><td><code>validarFatorEscala</code>, <code>gerarVerticesRegulares</code>, <code>copiarAtributosPara</code></td><td>Reaproveitamento entre subclasses; base da cópia profunda (Prototype).</td></tr>
+    <tr><td>Ponto</td><td>Construtor, getters e setters</td><td>Encapsulamento (atributos privados).</td></tr>
+    <tr><td>ContainerApp</td><td><code>palco</code>, <code>arquivoAtual</code>, <code>persistencia</code>; <code>salvarArquivo()</code> devolve <code>boolean</code>; métodos auxiliares de desenho, diálogos e atalhos</td><td>Salvar/carregar com FileChooser; confirmação ao fechar; atalhos de teclado.</td></tr>
+    <tr><td>BarraLateralView</td><td><code>construirSecaoSistema()</code>, <code>atualizarSnapping()</code>, <code>setAcaoSalvar/Carregar</code></td><td>Seção "Sistema" da interface; sincronizar a grade após carregar.</td></tr>
+    <tr><td>PainelStatusView</td><td>Rótulos de coordenadas, total e seleção</td><td>Barra de status em tempo real.</td></tr>
+  </table>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "base",
+    themeVariables: {
+      primaryColor: "#FFFDE7",
+      primaryBorderColor: "#555555",
+      lineColor: "#444444",
+      fontFamily: "Segoe UI, Arial, sans-serif",
+      fontSize: "13px"
+    },
+    classDiagram: { useMaxWidth: true }
+  });
+  mermaid.run().then(() => { document.body.setAttribute("data-pronto", "1"); });
+</script>
+</body>
+</html>
