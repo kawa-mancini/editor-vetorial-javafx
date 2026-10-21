@@ -1,5 +1,7 @@
 package org.example.Views;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +11,8 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -16,8 +20,10 @@ import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.example.Controller.EditorContext;
+import org.example.Controller.PersistenciaJson;
 import org.example.Models.Circulo;
 import org.example.Models.FormaGeometrica;
 import org.example.Models.Ponto;
@@ -41,13 +47,21 @@ public class ContainerApp extends Application {
     private static final Color COR_GRADE = Color.web("#E6E6E6");
     private static final Color COR_CAIXA_SELECAO = Color.web("#1E78D7");
 
+    private static final String TITULO = "Editor de Desenho Vetorial";
+
     private Canvas areaDeDesenho;
     private EditorContext contexto;
     private BarraLateralView barraLateral;
     private PainelStatusView painelStatus;
 
+    // Para salvar/carregar: a janela (dona das caixas de diálogo) e o arquivo aberto
+    private Stage palco;
+    private File arquivoAtual;
+    private final PersistenciaJson persistencia = new PersistenciaJson();
+
     @Override
     public void start(Stage palco) {
+        this.palco = palco;
         contexto = new EditorContext();
         barraLateral = new BarraLateralView(contexto);
         painelStatus = new PainelStatusView(contexto);
@@ -74,19 +88,30 @@ public class ContainerApp extends Application {
         raiz.setBottom(painelStatus);
 
         // A View ensina o contexto a redesenhar, atualizar o status e avisar o usuário
-        contexto.setAcaoRedesenhar(this::redesenharCanvas);
+        contexto.setAcaoRedesenhar(() -> {
+            redesenharCanvas();
+            atualizarTitulo();
+        });
         contexto.setAcaoAtualizarStats(() -> {
             painelStatus.atualizar();
             barraLateral.atualizarCoresInterface();
         });
         contexto.setAcaoMostrarAviso(this::mostrarAviso);
+        barraLateral.setAcaoSalvar(this::salvarArquivo);
+        barraLateral.setAcaoCarregar(this::carregarArquivo);
 
         inicializarEventos();
 
         Scene cena = new Scene(raiz, LARGURA_INICIAL, ALTURA_INICIAL);
         configurarAtalhos(cena);
-        palco.setTitle("Editor de Desenho Vetorial");
         palco.setScene(cena);
+        // Ao fechar a janela: se houver alterações não salvas, pergunta antes
+        palco.setOnCloseRequest(evento -> {
+            if (!confirmarDescarteDasAlteracoes()) {
+                evento.consume(); // consumir o evento cancela o fechamento
+            }
+        });
+        atualizarTitulo();
         palco.show();
 
         contexto.requestRedraw();
@@ -105,8 +130,15 @@ public class ContainerApp extends Application {
         areaDeDesenho.setOnMouseClicked(contexto::aoClicar);
     }
 
-    /** Atalhos de teclado: Ctrl+Z desfaz, Ctrl+Y (ou Ctrl+Shift+Z) refaz, Delete exclui a seleção. */
+    /**
+     * Atalhos de teclado: Ctrl+Z desfaz, Ctrl+Y (ou Ctrl+Shift+Z) refaz,
+     * Delete exclui a seleção, Ctrl+S salva e Ctrl+O carrega.
+     */
     private void configurarAtalhos(Scene cena) {
+        cena.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.S, KeyCombination.SHORTCUT_DOWN), this::salvarArquivo);
+        cena.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN), this::carregarArquivo);
         cena.getAccelerators().put(
                 new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN), contexto::desfazer);
         cena.getAccelerators().put(
@@ -119,10 +151,122 @@ public class ContainerApp extends Application {
 
     private void mostrarAviso(String mensagem) {
         Alert alerta = new Alert(Alert.AlertType.WARNING);
+        alerta.initOwner(palco);
         alerta.setTitle("Aviso");
         alerta.setHeaderText(null);
         alerta.setContentText(mensagem);
         alerta.showAndWait();
+    }
+
+    private void mostrarErro(String titulo, String mensagem) {
+        Alert alerta = new Alert(Alert.AlertType.ERROR);
+        alerta.initOwner(palco);
+        alerta.setTitle("Erro");
+        alerta.setHeaderText(titulo);
+        alerta.setContentText(mensagem);
+        alerta.showAndWait();
+    }
+
+    /** Título da janela com o nome do arquivo e um "*" quando há alterações não salvas. */
+    private void atualizarTitulo() {
+        String nome = (arquivoAtual != null) ? arquivoAtual.getName() : "Sem título";
+        String modificado = contexto.temAlteracoesNaoSalvas() ? "*" : "";
+        palco.setTitle(nome + modificado + " - " + TITULO);
+    }
+
+    // ------------------------------------------------------------------
+    // Salvar / carregar
+    // ------------------------------------------------------------------
+
+    /**
+     * Pede o nome do arquivo e salva o desenho em JSON.
+     * Devolve true se salvou; false se o usuário cancelou ou deu erro.
+     */
+    private boolean salvarArquivo() {
+        FileChooser seletor = criarSeletorDeArquivo("Salvar desenho");
+        if (arquivoAtual != null) {
+            seletor.setInitialDirectory(arquivoAtual.getParentFile());
+            seletor.setInitialFileName(arquivoAtual.getName());
+        } else {
+            seletor.setInitialFileName("desenho.json");
+        }
+        File arquivo = seletor.showSaveDialog(palco);
+        if (arquivo == null) {
+            return false; // usuário cancelou
+        }
+        if (!arquivo.getName().toLowerCase().endsWith(".json")) {
+            arquivo = new File(arquivo.getParentFile(), arquivo.getName() + ".json");
+        }
+
+        try {
+            persistencia.salvar(arquivo.toPath(), contexto, areaDeDesenho.getWidth(), areaDeDesenho.getHeight());
+            arquivoAtual = arquivo;
+            atualizarTitulo();
+            return true;
+        } catch (IOException e) {
+            mostrarErro("Não foi possível salvar o arquivo.",
+                    "Verifique se a pasta existe e se você tem permissão para gravar nela.\n\nDetalhe: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** Escolhe um arquivo JSON e substitui o desenho atual pelo conteúdo dele. */
+    private void carregarArquivo() {
+        if (!confirmarDescarteDasAlteracoes()) {
+            return;
+        }
+        FileChooser seletor = criarSeletorDeArquivo("Carregar desenho");
+        if (arquivoAtual != null) {
+            seletor.setInitialDirectory(arquivoAtual.getParentFile());
+        }
+        File arquivo = seletor.showOpenDialog(palco);
+        if (arquivo == null) {
+            return;
+        }
+
+        try {
+            persistencia.carregar(arquivo.toPath(), contexto);
+            arquivoAtual = arquivo;
+            barraLateral.atualizarSnapping();
+            contexto.requestRedraw();
+            contexto.requestStatsUpdate();
+        } catch (PersistenciaJson.ArquivoInvalidoException e) {
+            // Arquivo corrompido: explica o problema e o editor continua funcionando
+            mostrarErro("Não foi possível carregar \"" + arquivo.getName() + "\".",
+                    e.getMessage() + "\n\nO desenho atual não foi alterado.");
+        }
+    }
+
+    private FileChooser criarSeletorDeArquivo(String titulo) {
+        FileChooser seletor = new FileChooser();
+        seletor.setTitle(titulo);
+        seletor.getExtensionFilters().add(new FileChooser.ExtensionFilter("Desenho vetorial (*.json)", "*.json"));
+        return seletor;
+    }
+
+    /**
+     * Se houver alterações não salvas, pergunta se quer salvar.
+     * Devolve true se pode continuar (fechar, carregar outro arquivo...).
+     */
+    private boolean confirmarDescarteDasAlteracoes() {
+        if (!contexto.temAlteracoesNaoSalvas()) {
+            return true;
+        }
+        ButtonType salvar = new ButtonType("Salvar");
+        ButtonType naoSalvar = new ButtonType("Não salvar");
+        ButtonType cancelar = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        Alert pergunta = new Alert(Alert.AlertType.CONFIRMATION, "", salvar, naoSalvar, cancelar);
+        pergunta.initOwner(palco);
+        pergunta.setTitle("Alterações não salvas");
+        pergunta.setHeaderText("O desenho tem alterações que não foram salvas.");
+        pergunta.setContentText("Deseja salvar antes de continuar?");
+
+        ButtonType resposta = pergunta.showAndWait().orElse(cancelar);
+        if (resposta == salvar) {
+            return salvarArquivo(); // se o salvamento for cancelado, não continua
+        }
+        return resposta == naoSalvar;
     }
 
     // ------------------------------------------------------------------

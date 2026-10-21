@@ -26,6 +26,13 @@
             <version>${javafx.version}</version>
         </dependency>
 
+        <!-- Gson: leitura e escrita dos arquivos JSON do desenho -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.11.0</version>
+        </dependency>
+
         <!-- JUnit 5: testes automáticos (scope test = não vai junto com o programa) -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

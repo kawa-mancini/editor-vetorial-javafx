@@ -49,10 +49,17 @@ public class BarraLateralView extends VBox {
     // mudança feita pelo programa não seja confundida com uma escolha do usuário
     private boolean atualizandoInterface;
 
+    // Salvar e carregar abrem janelas de arquivo, que são responsabilidade do
+    // ContainerApp; ele informa aqui o que fazer quando os botões forem clicados
+    private Runnable acaoSalvar;
+    private Runnable acaoCarregar;
+
     public BarraLateralView(EditorContext contexto) {
         this.contexto = contexto;
         this.grupoFerramentas = new ToggleGroup();
         this.atualizandoInterface = false;
+        this.acaoSalvar = () -> { };
+        this.acaoCarregar = () -> { };
 
         setSpacing(4);
         setPadding(new Insets(8));
@@ -80,6 +87,19 @@ public class BarraLateralView extends VBox {
         seletorCorBorda.setValue(Color.web(forma.getCorBordaHex()));
         sliderEspessura.setValue(forma.getEspessuraBorda());
         atualizandoInterface = false;
+    }
+
+    /** Sincroniza a caixa da grade magnética com o contexto (ex.: depois de carregar um arquivo). */
+    public void atualizarSnapping() {
+        checkSnapping.setSelected(contexto.isGridSnappingHabilitado());
+    }
+
+    public void setAcaoSalvar(Runnable acao) {
+        this.acaoSalvar = (acao != null) ? acao : () -> { };
+    }
+
+    public void setAcaoCarregar(Runnable acao) {
+        this.acaoCarregar = (acao != null) ? acao : () -> { };
     }
 
     private void construirSecaoEstilos() {
@@ -180,12 +200,13 @@ public class BarraLateralView extends VBox {
         Button botaoRefazer = criarBotao("Refazer");
         botaoRefazer.setOnAction(e -> contexto.refazer());
 
-        getChildren().addAll(
-                criarTitulo("SISTEMA"),
-                botaoDesfazer,
-                botaoRefazer,
-                criarBotao("Salvar"),
-                criarBotao("Carregar"));
+        Button botaoSalvar = criarBotao("Salvar");
+        botaoSalvar.setOnAction(e -> acaoSalvar.run());
+
+        Button botaoCarregar = criarBotao("Carregar");
+        botaoCarregar.setOnAction(e -> acaoCarregar.run());
+
+        getChildren().addAll(criarTitulo("SISTEMA"), botaoDesfazer, botaoRefazer, botaoSalvar, botaoCarregar);
     }
 
     // ------------------------------------------------------------------

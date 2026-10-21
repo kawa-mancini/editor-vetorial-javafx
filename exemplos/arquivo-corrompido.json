@@ -1,0 +1,16 @@
+{
+  "versao": 1,
+  "formas": [
+    {
+      "tipo": "Circulo",
+      "pontos": [ { "x": 180.0, "y": 180.0 } ],
+      "raio": -15.0,
+      "corPreenchimentoHex": "#4A8080",
+      "corBordaHex": "#000000",
+      "espessuraBorda": 1.0,
+      "groupId": null
+    },
+    {
+      "tipo": "Poligono",
+      "pontos": [
+        { "x": 650.0, "y": 420.0 },

@@ -28,6 +28,9 @@ public class EditorContext {
     private boolean gridSnappingHabilitado;
     private final HistoricoController historico;
 
+    // Fica true quando o desenho muda e volta a false ao salvar ou carregar
+    private boolean alteracoesNaoSalvas;
+
     // Estilo usado nas formas novas (vem da barra lateral)
     private String corPreenchimentoAtual;
     private String corBordaAtual;
@@ -50,6 +53,7 @@ public class EditorContext {
         this.ferramentaAtual = new FerramentaSelecionar();
         this.gridSnappingHabilitado = false;
         this.historico = new HistoricoController();
+        this.alteracoesNaoSalvas = false;
         this.corPreenchimentoAtual = "#D3D3D3";
         this.corBordaAtual = "#000000";
         this.espessuraBordaAtual = 1.0;
@@ -101,14 +105,31 @@ public class EditorContext {
     /** Tira uma "foto" do desenho atual. Chamar ANTES de cada alteração. */
     public void registrarEstado() {
         historico.registrarEstado(formas);
+        // Toda alteração passa por aqui, então é o lugar certo para marcar o desenho como modificado
+        alteracoesNaoSalvas = true;
     }
 
     public void desfazer() {
+        if (historico.podeDesfazer()) {
+            alteracoesNaoSalvas = true;
+        }
         restaurar(historico.desfazer(formas));
     }
 
     public void refazer() {
+        if (historico.podeRefazer()) {
+            alteracoesNaoSalvas = true;
+        }
         restaurar(historico.refazer(formas));
+    }
+
+    public boolean temAlteracoesNaoSalvas() {
+        return alteracoesNaoSalvas;
+    }
+
+    /** Chamado depois de salvar ou carregar um arquivo com sucesso. */
+    public void marcarComoSalvo() {
+        alteracoesNaoSalvas = false;
     }
 
     private void restaurar(List<FormaGeometrica> estado) {

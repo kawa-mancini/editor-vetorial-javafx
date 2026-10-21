@@ -1,5 +1,7 @@
 package org.example.Models;
 
+import java.util.List;
+
 /**
  * Hexágono regular definido por centro e raio (distância do centro até cada vértice).
  * Os 6 vértices ficam a cada 60°, começando em 0°, o que deixa os lados de cima
@@ -15,9 +17,21 @@ public class Hexagono extends FormaBase {
         gerarVerticesRegulares(centro, raio, LADOS, ANGULO_INICIAL);
     }
 
-    // Usado só pelo clonar() (mesmo motivo do Quadrado)
+    // Usado pelo clonar() e por aPartirDosVertices() (mesmo motivo do Quadrado)
     private Hexagono() {
         super();
+    }
+
+    /** Recria um hexágono a partir dos vértices já calculados (usado ao carregar um arquivo). */
+    public static Hexagono aPartirDosVertices(List<Ponto> vertices) {
+        if (vertices == null || vertices.size() != LADOS) {
+            throw new IllegalArgumentException("Um hexágono precisa de exatamente " + LADOS + " vértices.");
+        }
+        Hexagono hexagono = new Hexagono();
+        for (Ponto p : vertices) {
+            hexagono.adicionarPonto(p.clonar());
+        }
+        return hexagono;
     }
 
     @Override

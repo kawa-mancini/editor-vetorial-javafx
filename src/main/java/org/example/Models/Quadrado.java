@@ -1,5 +1,7 @@
 package org.example.Models;
 
+import java.util.List;
+
 /**
  * Quadrado definido por centro e raio (distância do centro até cada vértice).
  * Os 4 vértices são calculados com seno/cosseno a 45°, 135°, 225° e 315°,
@@ -15,10 +17,25 @@ public class Quadrado extends FormaBase {
         gerarVerticesRegulares(centro, raio, LADOS, ANGULO_INICIAL);
     }
 
-    // Usado só pelo clonar(): os pontos são copiados do original em vez de
-    // recalculados, porque o quadrado pode ter sido rotacionado ou cisalhado
+    // Usado pelo clonar() e por aPartirDosVertices(): os pontos são copiados em vez
+    // de recalculados, porque o quadrado pode ter sido rotacionado ou cisalhado
     private Quadrado() {
         super();
+    }
+
+    /**
+     * Recria um quadrado a partir dos vértices já calculados (usado ao carregar
+     * um arquivo, quando o quadrado pode ter sido transformado ou editado).
+     */
+    public static Quadrado aPartirDosVertices(List<Ponto> vertices) {
+        if (vertices == null || vertices.size() != LADOS) {
+            throw new IllegalArgumentException("Um quadrado precisa de exatamente " + LADOS + " vértices.");
+        }
+        Quadrado quadrado = new Quadrado();
+        for (Ponto p : vertices) {
+            quadrado.adicionarPonto(p.clonar());
+        }
+        return quadrado;
     }
 
     @Override
