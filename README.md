@@ -101,7 +101,7 @@ apenas as chama (`requestRedraw()`, `requestStatsUpdate()`, `mostrarAviso()`).
 
 O diagrama de classes atualizado está em [`docs/diagrama_atualizado.pdf`](docs/diagrama_atualizado.pdf).
 A última página lista tudo o que foi acrescentado em relação ao diagrama original
-([`docs/diagrama.pdf`](docs/diagrama.pdf)) e o motivo de cada acréscimo.
+(fornecido pelo professor junto com o enunciado) e o motivo de cada acréscimo.
 
 ---
 
