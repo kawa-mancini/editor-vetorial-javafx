@@ -72,6 +72,7 @@ public class FerramentaDesenhar implements Ferramenta {
         try {
             Poligono poligono = new Poligono(emAndamento.getPontos());
             contexto.aplicarEstiloAtual(poligono);
+            contexto.registrarEstado();
             contexto.adicionarForma(poligono);
             contexto.setFormaEmAndamento(null);
         } catch (IllegalArgumentException e) {

@@ -23,6 +23,10 @@ public class FerramentaSelecionar implements Ferramenta {
     private double ultimoX;
     private double ultimoY;
 
+    // O histórico só é registrado quando a forma realmente se move:
+    // um simples clique para selecionar não deve gerar um "desfazer"
+    private boolean estadoRegistrado;
+
     @Override
     public void aoPressionarMouse(MouseEvent evento, EditorContext contexto) {
         double x = evento.getX();
@@ -48,6 +52,7 @@ public class FerramentaSelecionar implements Ferramenta {
                 contexto.selecionar(alvo);
             }
             movendoSelecao = true;
+            estadoRegistrado = false;
             ultimoX = contexto.aplicarSnap(x);
             ultimoY = contexto.aplicarSnap(y);
         }
@@ -64,6 +69,10 @@ public class FerramentaSelecionar implements Ferramenta {
             double dx = x - ultimoX;
             double dy = y - ultimoY;
             if (dx != 0 || dy != 0) {
+                if (!estadoRegistrado) {
+                    contexto.registrarEstado();
+                    estadoRegistrado = true;
+                }
                 for (FormaGeometrica forma : contexto.getSelecionados()) {
                     forma.transladar(dx, dy);
                 }

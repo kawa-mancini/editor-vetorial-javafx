@@ -19,6 +19,9 @@ public class FerramentaEditarVertice implements Ferramenta {
 
     private Ponto verticeSelecionado;
 
+    // Registra o histórico uma vez por arrasto, no primeiro movimento
+    private boolean estadoRegistrado;
+
     @Override
     public void aoPressionarMouse(MouseEvent evento, EditorContext contexto) {
         double x = evento.getX();
@@ -30,6 +33,7 @@ public class FerramentaEditarVertice implements Ferramenta {
             for (Ponto vertice : forma.getPontos()) {
                 if (vertice.distancia(new Ponto(x, y)) <= TOLERANCIA) {
                     verticeSelecionado = vertice;
+                    estadoRegistrado = false;
                     selecionarSomente(forma, contexto);
                     return;
                 }
@@ -47,6 +51,10 @@ public class FerramentaEditarVertice implements Ferramenta {
     public void aoArrastarMouse(MouseEvent evento, EditorContext contexto) {
         if (verticeSelecionado == null) {
             return;
+        }
+        if (!estadoRegistrado) {
+            contexto.registrarEstado();
+            estadoRegistrado = true;
         }
         verticeSelecionado.setX(contexto.aplicarSnap(evento.getX()));
         verticeSelecionado.setY(contexto.aplicarSnap(evento.getY()));

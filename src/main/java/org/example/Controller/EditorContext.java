@@ -25,6 +25,7 @@ public class EditorContext {
     private FormaGeometrica formaEmAndamento;
     private Ferramenta ferramentaAtual;
     private boolean gridSnappingHabilitado;
+    private final HistoricoController historico;
 
     // Estilo usado nas formas novas (vem da barra lateral)
     private String corPreenchimentoAtual;
@@ -47,6 +48,7 @@ public class EditorContext {
         this.formaEmAndamento = null;
         this.ferramentaAtual = new FerramentaSelecionar();
         this.gridSnappingHabilitado = false;
+        this.historico = new HistoricoController();
         this.corPreenchimentoAtual = "#D3D3D3";
         this.corBordaAtual = "#000000";
         this.espessuraBordaAtual = 1.0;
@@ -89,6 +91,36 @@ public class EditorContext {
         this.formaEmAndamento = null;
         this.caixaSelecao = null;
         requestRedraw();
+    }
+
+    // ------------------------------------------------------------------
+    // Desfazer / refazer (padrão Memento)
+    // ------------------------------------------------------------------
+
+    /** Tira uma "foto" do desenho atual. Chamar ANTES de cada alteração. */
+    public void registrarEstado() {
+        historico.registrarEstado(formas);
+    }
+
+    public void desfazer() {
+        restaurar(historico.desfazer(formas));
+    }
+
+    public void refazer() {
+        restaurar(historico.refazer(formas));
+    }
+
+    private void restaurar(List<FormaGeometrica> estado) {
+        // A lista pode ser a própria "formas" (quando não havia o que desfazer):
+        // copia antes de limpar para não perder as formas
+        setFormas(new ArrayList<>(estado));
+        formaEmAndamento = null;
+        requestRedraw();
+        requestStatsUpdate();
+    }
+
+    public HistoricoController getHistorico() {
+        return historico;
     }
 
     // ------------------------------------------------------------------
@@ -210,6 +242,10 @@ public class EditorContext {
     }
 
     public void excluirSelecionados() {
+        if (selecionados.isEmpty()) {
+            return;
+        }
+        registrarEstado();
         formas.removeAll(selecionados);
         selecionados.clear();
     }

@@ -20,6 +20,9 @@ public class FerramentaTransformar implements Ferramenta {
     private Ponto centroTransformacao;
     private Ponto ultimoMouse;
 
+    // Registra o histórico uma vez por arrasto, no primeiro movimento
+    private boolean estadoRegistrado;
+
     public FerramentaTransformar(ModoFerramenta modo) {
         if (modo == null) {
             throw new IllegalArgumentException("O modo da ferramenta não pode ser nulo.");
@@ -43,6 +46,7 @@ public class FerramentaTransformar implements Ferramenta {
         }
         centroTransformacao = contexto.getCentroideSelecao();
         ultimoMouse = new Ponto(evento.getX(), evento.getY());
+        estadoRegistrado = false;
         contexto.requestRedraw();
         contexto.requestStatsUpdate();
     }
@@ -51,6 +55,10 @@ public class FerramentaTransformar implements Ferramenta {
     public void aoArrastarMouse(MouseEvent evento, EditorContext contexto) {
         if (ultimoMouse == null) {
             return;
+        }
+        if (!estadoRegistrado) {
+            contexto.registrarEstado();
+            estadoRegistrado = true;
         }
         Ponto atual = new Ponto(evento.getX(), evento.getY());
         for (FormaGeometrica forma : contexto.getSelecionados()) {

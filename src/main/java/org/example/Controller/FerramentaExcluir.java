@@ -29,6 +29,7 @@ public class FerramentaExcluir implements Ferramenta {
     public void aoClicar(MouseEvent evento, EditorContext contexto) {
         FormaGeometrica alvo = contexto.encontrarFormaEm(evento.getX(), evento.getY());
         if (alvo != null) {
+            contexto.registrarEstado();
             contexto.removerForma(alvo);
             contexto.requestRedraw();
             contexto.requestStatsUpdate();

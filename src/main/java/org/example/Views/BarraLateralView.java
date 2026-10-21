@@ -87,14 +87,14 @@ public class BarraLateralView extends VBox {
         seletorCorPreenchimento.valueProperty().addListener((obs, antiga, nova) -> {
             String hex = paraHex(nova);
             contexto.setCorPreenchimentoAtual(hex);
-            aplicarNosSelecionados(forma -> forma.setCorPreenchimentoHex(hex));
+            aplicarNosSelecionados(forma -> forma.setCorPreenchimentoHex(hex), true);
         });
 
         seletorCorBorda = new ColorPicker(Color.BLACK);
         seletorCorBorda.valueProperty().addListener((obs, antiga, nova) -> {
             String hex = paraHex(nova);
             contexto.setCorBordaAtual(hex);
-            aplicarNosSelecionados(forma -> forma.setCorBordaHex(hex));
+            aplicarNosSelecionados(forma -> forma.setCorBordaHex(hex), true);
         });
 
         // Slider de 1 a 10 mostrando só os números das pontas, como na figura
@@ -104,7 +104,14 @@ public class BarraLateralView extends VBox {
         sliderEspessura.valueProperty().addListener((obs, antiga, nova) -> {
             double espessura = nova.doubleValue();
             contexto.setEspessuraBordaAtual(espessura);
-            aplicarNosSelecionados(forma -> forma.setEspessuraBorda(espessura));
+            // Arrastando o slider o valor muda dezenas de vezes; o histórico é
+            // registrado só uma vez, no início do arrasto (listener abaixo)
+            aplicarNosSelecionados(forma -> forma.setEspessuraBorda(espessura), !sliderEspessura.isValueChanging());
+        });
+        sliderEspessura.valueChangingProperty().addListener((obs, antes, comecouArrastar) -> {
+            if (comecouArrastar && !atualizandoInterface && !contexto.getSelecionados().isEmpty()) {
+                contexto.registrarEstado();
+            }
         });
 
         checkSnapping = new CheckBox("Grade Magnética (Snapping)");
@@ -164,10 +171,16 @@ public class BarraLateralView extends VBox {
     }
 
     private void construirSecaoSistema() {
+        Button botaoDesfazer = criarBotao("Desfazer");
+        botaoDesfazer.setOnAction(e -> contexto.desfazer());
+
+        Button botaoRefazer = criarBotao("Refazer");
+        botaoRefazer.setOnAction(e -> contexto.refazer());
+
         getChildren().addAll(
                 criarTitulo("SISTEMA"),
-                criarBotao("Desfazer"),
-                criarBotao("Refazer"),
+                botaoDesfazer,
+                botaoRefazer,
                 criarBotao("Salvar"),
                 criarBotao("Carregar"));
     }
@@ -176,10 +189,16 @@ public class BarraLateralView extends VBox {
     // Auxiliares
     // ------------------------------------------------------------------
 
-    /** Aplica uma mudança de estilo nas formas selecionadas, se foi o usuário que mudou. */
-    private void aplicarNosSelecionados(Consumer<FormaGeometrica> alteracao) {
+    /**
+     * Aplica uma mudança de estilo nas formas selecionadas, se foi o usuário que mudou.
+     * Com registrarHistorico = true, guarda o estado antes (para poder desfazer).
+     */
+    private void aplicarNosSelecionados(Consumer<FormaGeometrica> alteracao, boolean registrarHistorico) {
         if (atualizandoInterface || contexto.getSelecionados().isEmpty()) {
             return;
+        }
+        if (registrarHistorico) {
+            contexto.registrarEstado();
         }
         for (FormaGeometrica forma : contexto.getSelecionados()) {
             alteracao.accept(forma);

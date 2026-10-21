@@ -8,6 +8,9 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
@@ -78,6 +81,7 @@ public class ContainerApp extends Application {
         inicializarEventos();
 
         Scene cena = new Scene(raiz, LARGURA_INICIAL, ALTURA_INICIAL);
+        configurarAtalhos(cena);
         palco.setTitle("Editor de Desenho Vetorial");
         palco.setScene(cena);
         palco.show();
@@ -96,6 +100,22 @@ public class ContainerApp extends Application {
         areaDeDesenho.setOnMouseDragged(contexto::aoArrastarMouse);
         areaDeDesenho.setOnMouseReleased(contexto::aoSoltarMouse);
         areaDeDesenho.setOnMouseClicked(contexto::aoClicar);
+    }
+
+    /** Atalhos de teclado: Ctrl+Z desfaz, Ctrl+Y (ou Ctrl+Shift+Z) refaz, Delete exclui a seleção. */
+    private void configurarAtalhos(Scene cena) {
+        cena.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN), contexto::desfazer);
+        cena.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Y, KeyCombination.SHORTCUT_DOWN), contexto::refazer);
+        cena.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN),
+                contexto::refazer);
+        cena.getAccelerators().put(new KeyCodeCombination(KeyCode.DELETE), () -> {
+            contexto.excluirSelecionados();
+            contexto.requestRedraw();
+            contexto.requestStatsUpdate();
+        });
     }
 
     private void mostrarAviso(String mensagem) {

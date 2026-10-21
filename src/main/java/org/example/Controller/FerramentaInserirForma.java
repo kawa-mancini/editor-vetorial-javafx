@@ -59,6 +59,7 @@ public class FerramentaInserirForma implements Ferramenta {
     public void aoSoltarMouse(MouseEvent evento, EditorContext contexto) {
         FormaGeometrica previa = contexto.getFormaEmAndamento();
         if (previa != null) {
+            contexto.registrarEstado();
             contexto.adicionarForma(previa);
             contexto.setFormaEmAndamento(null);
         }
