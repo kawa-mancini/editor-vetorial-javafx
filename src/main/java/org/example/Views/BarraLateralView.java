@@ -135,11 +135,7 @@ public class BarraLateralView extends VBox {
         botaoSelecionar.setSelected(true);
 
         Button botaoExcluirSelecionados = criarBotao("Excluir Selecionados");
-        botaoExcluirSelecionados.setOnAction(e -> {
-            contexto.excluirSelecionados();
-            contexto.requestRedraw();
-            contexto.requestStatsUpdate();
-        });
+        botaoExcluirSelecionados.setOnAction(e -> contexto.excluirSelecionados());
 
         getChildren().addAll(
                 criarTitulo("FERRAMENTAS"),
@@ -162,12 +158,19 @@ public class BarraLateralView extends VBox {
     }
 
     private void construirSecaoCamadas() {
-        getChildren().addAll(
-                criarTitulo("CAMADAS/GRUPO"),
-                criarBotao("Trazer p/ Frente"),
-                criarBotao("Enviar p/ Trás"),
-                criarBotao("Agrupar"),
-                criarBotao("Desagrupar"));
+        Button botaoFrente = criarBotao("Trazer p/ Frente");
+        botaoFrente.setOnAction(e -> contexto.trazerParaFrente());
+
+        Button botaoTras = criarBotao("Enviar p/ Trás");
+        botaoTras.setOnAction(e -> contexto.enviarParaTras());
+
+        Button botaoAgrupar = criarBotao("Agrupar");
+        botaoAgrupar.setOnAction(e -> contexto.agruparSelecionados());
+
+        Button botaoDesagrupar = criarBotao("Desagrupar");
+        botaoDesagrupar.setOnAction(e -> contexto.desagruparSelecionados());
+
+        getChildren().addAll(criarTitulo("CAMADAS/GRUPO"), botaoFrente, botaoTras, botaoAgrupar, botaoDesagrupar);
     }
 
     private void construirSecaoSistema() {

@@ -3,6 +3,7 @@ package org.example.Controller;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.input.MouseEvent;
@@ -205,14 +206,22 @@ public class EditorContext {
         return Collections.unmodifiableList(selecionados);
     }
 
+    /**
+     * Seleciona a forma e, se ela fizer parte de um grupo, TODAS as formas do grupo.
+     * É aqui que o Composite acontece: como as ferramentas trabalham sobre a seleção,
+     * o grupo inteiro passa a se mover e se transformar como uma forma só.
+     */
     public void selecionar(FormaGeometrica forma) {
-        if (!selecionados.contains(forma)) {
-            selecionados.add(forma);
+        for (FormaGeometrica membro : getMembrosDoGrupo(forma)) {
+            if (!selecionados.contains(membro)) {
+                selecionados.add(membro);
+            }
         }
     }
 
+    /** Tira da seleção a forma e o grupo dela. */
     public void desselecionar(FormaGeometrica forma) {
-        selecionados.remove(forma);
+        selecionados.removeAll(getMembrosDoGrupo(forma));
     }
 
     public void limparSelecao() {
@@ -248,6 +257,118 @@ public class EditorContext {
         registrarEstado();
         formas.removeAll(selecionados);
         selecionados.clear();
+        requestRedraw();
+        requestStatsUpdate();
+    }
+
+    // ------------------------------------------------------------------
+    // Grupos (padrão Composite)
+    // ------------------------------------------------------------------
+
+    /**
+     * Devolve todas as formas do mesmo grupo da forma informada.
+     * Sem grupo (groupId nulo), o "grupo" é só a própria forma.
+     */
+    public List<FormaGeometrica> getMembrosDoGrupo(FormaGeometrica forma) {
+        String id = forma.getGroupId();
+        if (id == null) {
+            return List.of(forma);
+        }
+        List<FormaGeometrica> membros = new ArrayList<>();
+        for (FormaGeometrica outra : formas) {
+            if (id.equals(outra.getGroupId())) {
+                membros.add(outra);
+            }
+        }
+        if (!membros.contains(forma)) {
+            membros.add(forma);
+        }
+        return membros;
+    }
+
+    /** Dá o mesmo groupId (um identificador novo e único) a todas as formas selecionadas. */
+    public void agruparSelecionados() {
+        if (selecionados.size() < 2) {
+            mostrarAviso("Selecione pelo menos duas formas para agrupar.");
+            return;
+        }
+        registrarEstado();
+        String novoGroupId = UUID.randomUUID().toString();
+        for (FormaGeometrica forma : selecionados) {
+            forma.setGroupId(novoGroupId);
+        }
+        requestRedraw();
+        requestStatsUpdate();
+    }
+
+    /** Tira as formas selecionadas dos seus grupos (groupId volta a ser nulo). */
+    public void desagruparSelecionados() {
+        boolean algumaAgrupada = false;
+        for (FormaGeometrica forma : selecionados) {
+            if (forma.getGroupId() != null) {
+                algumaAgrupada = true;
+            }
+        }
+        if (!algumaAgrupada) {
+            mostrarAviso("Nenhuma forma selecionada pertence a um grupo.");
+            return;
+        }
+        registrarEstado();
+        for (FormaGeometrica forma : selecionados) {
+            forma.setGroupId(null);
+        }
+        requestRedraw();
+        requestStatsUpdate();
+    }
+
+    // ------------------------------------------------------------------
+    // Camadas (a ordem da lista "formas" é a ordem de desenho)
+    // ------------------------------------------------------------------
+
+    /** Leva as formas selecionadas para o fim da lista, ou seja, para a frente de todas. */
+    public void trazerParaFrente() {
+        if (!temSelecaoParaCamadas()) {
+            return;
+        }
+        registrarEstado();
+        List<FormaGeometrica> movidas = selecionadosNaOrdemDasCamadas();
+        formas.removeAll(movidas);
+        formas.addAll(movidas);
+        requestRedraw();
+    }
+
+    /** Leva as formas selecionadas para o início da lista, ou seja, para trás de todas. */
+    public void enviarParaTras() {
+        if (!temSelecaoParaCamadas()) {
+            return;
+        }
+        registrarEstado();
+        List<FormaGeometrica> movidas = selecionadosNaOrdemDasCamadas();
+        formas.removeAll(movidas);
+        formas.addAll(0, movidas);
+        requestRedraw();
+    }
+
+    private boolean temSelecaoParaCamadas() {
+        if (selecionados.isEmpty()) {
+            mostrarAviso("Selecione uma forma para mudar a camada.");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * As selecionadas na ordem em que aparecem no desenho. Mantém a ordem
+     * entre elas: se A estava atrás de B, continua atrás depois de mover.
+     */
+    private List<FormaGeometrica> selecionadosNaOrdemDasCamadas() {
+        List<FormaGeometrica> resultado = new ArrayList<>();
+        for (FormaGeometrica forma : formas) {
+            if (selecionados.contains(forma)) {
+                resultado.add(forma);
+            }
+        }
+        return resultado;
     }
 
     public Rectangle2D getCaixaSelecao() {

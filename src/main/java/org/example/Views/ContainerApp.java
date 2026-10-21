@@ -1,6 +1,8 @@
 package org.example.Views;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javafx.application.Application;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
@@ -34,6 +36,7 @@ public class ContainerApp extends Application {
     private static final Color COR_VERTICE = Color.RED;
     private static final double ESPESSURA_MINIMA_SELECAO = 2;
     private static final double RAIO_VERTICE = 3;
+    private static final double MARGEM_CONTORNO_GRUPO = 8;
 
     private static final Color COR_GRADE = Color.web("#E6E6E6");
     private static final Color COR_CAIXA_SELECAO = Color.web("#1E78D7");
@@ -111,11 +114,7 @@ public class ContainerApp extends Application {
         cena.getAccelerators().put(
                 new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN),
                 contexto::refazer);
-        cena.getAccelerators().put(new KeyCodeCombination(KeyCode.DELETE), () -> {
-            contexto.excluirSelecionados();
-            contexto.requestRedraw();
-            contexto.requestStatsUpdate();
-        });
+        cena.getAccelerators().put(new KeyCodeCombination(KeyCode.DELETE), contexto::excluirSelecionados);
     }
 
     private void mostrarAviso(String mensagem) {
@@ -143,6 +142,7 @@ public class ContainerApp extends Application {
         for (FormaGeometrica forma : contexto.getFormas()) {
             desenharForma(forma, contexto.isSelecionado(forma));
         }
+        desenharContornoDosGrupos(gc);
 
         // Forma ainda sendo criada (polígono pela metade, quadrado sendo arrastado...)
         FormaGeometrica emAndamento = contexto.getFormaEmAndamento();
@@ -159,6 +159,39 @@ public class ContainerApp extends Application {
             gc.strokeRect(caixa.getMinX(), caixa.getMinY(), caixa.getWidth(), caixa.getHeight());
             gc.setLineDashes(null);
         }
+    }
+
+    /**
+     * Desenha um retângulo tracejado em volta de cada grupo selecionado,
+     * para o usuário ver que aquelas formas estão juntas.
+     */
+    private void desenharContornoDosGrupos(GraphicsContext gc) {
+        // groupId -> {minX, minY, maxX, maxY}
+        Map<String, double[]> limitesPorGrupo = new HashMap<>();
+        for (FormaGeometrica forma : contexto.getSelecionados()) {
+            if (forma.getGroupId() == null) {
+                continue;
+            }
+            double[] limites = limitesPorGrupo.computeIfAbsent(forma.getGroupId(),
+                    id -> new double[] {Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE});
+            // O círculo ocupa raio para cada lado do centro; os demais, só os vértices
+            double folga = (forma instanceof Circulo) ? ((Circulo) forma).getRaio() : 0;
+            for (Ponto p : forma.getPontos()) {
+                limites[0] = Math.min(limites[0], p.getX() - folga);
+                limites[1] = Math.min(limites[1], p.getY() - folga);
+                limites[2] = Math.max(limites[2], p.getX() + folga);
+                limites[3] = Math.max(limites[3], p.getY() + folga);
+            }
+        }
+
+        gc.setStroke(COR_SELECAO);
+        gc.setLineWidth(1);
+        gc.setLineDashes(4, 4);
+        for (double[] l : limitesPorGrupo.values()) {
+            gc.strokeRect(l[0] - MARGEM_CONTORNO_GRUPO, l[1] - MARGEM_CONTORNO_GRUPO,
+                    l[2] - l[0] + 2 * MARGEM_CONTORNO_GRUPO, l[3] - l[1] + 2 * MARGEM_CONTORNO_GRUPO);
+        }
+        gc.setLineDashes(null);
     }
 
     private void desenharGrade(GraphicsContext gc) {
